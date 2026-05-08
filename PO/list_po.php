@@ -25,17 +25,24 @@ try {
     
     // 1. Paginasi (Menerima parameter 'page' dari request frontend)
     $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-    $pageSize = 100; // Konsisten dengan limit di AccurateAPI.php
+    $pageSize = 100; // Konsisten dengan pageSize di sistem paging
     
     $extraParams['sp.page'] = $page;
     $extraParams['sp.pageSize'] = $pageSize;
 
     // 2. Filter Vendor
+    // Jika supplier bernilai '%' (All), maka tidak perlu menambah filter vendor
     if (isset($_GET['vendorNo']) && !empty($_GET['vendorNo']) && $_GET['vendorNo'] !== '%') {
         $extraParams['filter.vendorNo'] = $_GET['vendorNo'];
     }
 
-    // 3. Filter Tanggal (Range)
+    // 3. Filter Status
+    if (isset($_GET['status']) && !empty($_GET['status']) && $_GET['status'] !== '%') {
+        $extraParams['filter.status.op'] = 'EQUAL';
+        $extraParams['filter.status.val'] = $_GET['status'];
+    }
+
+    // 4. Filter Tanggal (Range)
     if (isset($_GET['fromDate']) && !empty($_GET['fromDate']) && 
         isset($_GET['toDate']) && !empty($_GET['toDate'])) {
         
@@ -44,18 +51,19 @@ try {
         $extraParams['filter.transDate.val[1]'] = $_GET['toDate'];
     } 
     
-    // Panggil fungsi API
+    // Panggil fungsi API utama dari class AccurateAPI
     $result = $api->getPurchaseOrderList($extraParams);
     
     if ($result['success']) {
         $responseData = isset($result['data']['d']) ? $result['data']['d'] : array();
         
-        // Menambahkan metadata paginasi untuk frontend
+        // Menambahkan metadata paginasi agar Frontend (NewDaftarPO.php) tahu 
+        // kapan harus memunculkan tombol "Load More"
         $result['pagination'] = array(
             'more' => (count($responseData) === $pageSize)
         );
 
-        // Bersihkan raw_response agar output JSON tidak terlalu besar
+        // Bersihkan raw_response agar output JSON ringan saat dikirim ke browser
         if (isset($result['raw_response'])) {
             unset($result['raw_response']);
         }

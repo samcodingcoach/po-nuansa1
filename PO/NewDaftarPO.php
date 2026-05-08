@@ -4,74 +4,75 @@ include('../StructureIndex/head-library.php');
 include('../Connection/validateSession.php');
 require_once("../classes/AccurateAPI.php");
 
+// 1. Logika Session Restricted (Hak Akses)
 $status = isset($_REQUEST['status']) ? $_REQUEST['status'] : "%";
-$supplier = isset($_REQUEST['supplier']) ? $_REQUEST['supplier'] : "%";
+if(!isset($_REQUEST['supplier']) && $_SESSION['restricted_nuansa1'] == "%") {
+    $supplier = "%";
+} else if(!isset($_REQUEST['supplier']) && $_SESSION['restricted_nuansa1'] != "%") {
+    $supplier = trim($_SESSION['restricted_nuansa1']);
+} else {
+    $supplier = $_REQUEST['supplier'];
+}
 
-// 1. Ambil Tanggal dari Request (Format d-m-Y)
+// 2. Manajemen Tanggal (Format HTML5 adalah YYYY-MM-DD)
 if(!isset($_REQUEST['tanggal'])) {
-    $date = date("d-m-Y", mktime(date("H"),date("i"),date("s"),date("m")-1,date("d"),date("Y")));
-} else { $date = $_REQUEST['tanggal']; }
+    $date = date("Y-m-d", mktime(0, 0, 0, date("m")-1, date("d"), date("Y")));
+} else { 
+    $date = $_REQUEST['tanggal']; 
+}
 
 if(!isset($_REQUEST['tanggal2'])) {
-    $date2 = date("d-m-Y");
-} else { $date2 = $_REQUEST['tanggal2']; }
-
-// 2. Konversi Tanggal ke Format Accurate (d/m/Y) untuk dikirim via AJAX
-$ajax_start = str_replace('-', '/', $date);
-$ajax_end = str_replace('-', '/', $date2);
+    $date2 = date("Y-m-d");
+} else { 
+    $date2 = $_REQUEST['tanggal2']; 
+}
 ?>
 <!DOCTYPE html>
 <html>
 <head>
     <title>Daftar Purchase Order</title>
+    
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-    <script language="javascript" src="../lib Calendar/calendar.js"></script>
-    <script language="javascript" src="../lib Calendar/datetimepicker.js"></script>
 
     <script type="text/javascript">
         var currentPage = 1;
+        var pageSize = 100;
 
         function clickView() {
-            // Saat klik view, ambil nilai tanggal terbaru dari input dan ganti - jadi /
-            var tgl1 = $('#txtTgl').val().replace(/-/g, '/');
-            var tgl2 = $('#txtTgl2').val().replace(/-/g, '/');
-            var supp = $('#lstSupplier').val();
-            var stat = $('#lstStatus').val();
-
-            // Reset ke halaman 1
             currentPage = 1;
-            $('#bodyTablePO').html('<tr><td colspan="7" align="center">Loading data...</td></tr>');
-            
-            loadDataPO(tgl1, tgl2, supp, stat);
+            $('#bodyTablePO').html('<tr><td colspan="7" align="center">Memuat data...</td></tr>');
+            loadDataPO();
         }
 
-        function loadDataPO(t1, t2, sp, st) {
-            // Gunakan parameter default jika tidak didefinisikan (untuk load awal)
-            var fDate = t1 || '<?= $ajax_start ?>';
-            var tDate = t2 || '<?= $ajax_end ?>';
-            var vNo = sp || '<?= $supplier ?>';
-            var vStatus = st || '<?= $status ?>';
+        function loadDataPO() {
+            // HTML5 date sudah YYYY-MM-DD, Accurate butuh DD/MM/YYYY
+            var tgl1_raw = $('#txtTgl').val().split("-");
+            var tgl2_raw = $('#txtTgl2').val().split("-");
+            
+            var tgl1 = tgl1_raw[2] + '/' + tgl1_raw[1] + '/' + tgl1_raw[0];
+            var tgl2 = tgl2_raw[2] + '/' + tgl2_raw[1] + '/' + tgl2_raw[0];
+            
+            var supp = $('#lstSupplier').val();
+            var stat = $('#lstStatus').val();
 
             $.ajax({
                 url: 'list_po.php',
                 type: 'GET',
                 data: {
                     page: currentPage,
-                    vendorNo: vNo,
-                    fromDate: fDate,
-                    toDate: tDate,
-                    status: vStatus
+                    vendorNo: supp,
+                    fromDate: tgl1,
+                    toDate: tgl2,
+                    status: stat
                 },
                 success: function(response) {
                     if (currentPage === 1) $('#bodyTablePO').empty();
                     
                     if (response.success && response.data.d.length > 0) {
-                        // Ganti angka 100 menjadi 2 (sesuai pageSize Anda)
                         $.each(response.data.d, function(i, item) {
-                            var nomorUrut = ((currentPage - 1) * 2) + (i + 1); // Pengali disesuaikan jadi 2
-                            
+                            var nomorUrut = ((currentPage - 1) * pageSize) + (i + 1);
                             var row = `<tr>
                                 <td align="center">${nomorUrut}</td>
                                 <td align="center">${item.transDate}</td>
@@ -81,44 +82,28 @@ $ajax_end = str_replace('-', '/', $date2);
                                 <td align="right">${parseFloat(item.totalAmount).toLocaleString('id-ID')}</td>
                                 <td align="center">
                                     <span class="action-link" onclick="clickDetail('${item.number}')">Detail</span>
-                                    ${(item.status !== 'REJECTED' && item.status !== 'DRAFT') ? ` | <span class="action-link" onclick="clickSJ('${item.number}')">Surat Jalan</span>` : ''}
+                                    ${(item.status !== 'REJECTED' && item.status !== 'DRAFT') ? ` | <span class="action-link" onclick="clickSJ('${item.number}')">Cetak SJ</span>` : ''}
                                 </td>
                             </tr>`;
                             $('#bodyTablePO').append(row);
                         });
-
-                        if (response.pagination && response.pagination.more) {
-                            $('#btnLoadMore').show();
-                        } else {
-                            $('#btnLoadMore').hide();
-                        }
+                        if (response.pagination && response.pagination.more) $('#btnLoadMore').show(); else $('#btnLoadMore').hide();
                     } else {
                         if (currentPage === 1) $('#bodyTablePO').html('<tr><td colspan="7" align="center">Data tidak ditemukan</td></tr>');
                         $('#btnLoadMore').hide();
                     }
-                },
-                error: function() {
-                    $('#bodyTablePO').html('<tr><td colspan="7" align="center" style="color:red;">Terjadi kesalahan koneksi ke API</td></tr>');
                 }
             });
         }
 
-        function nextBatch() {
-            currentPage++;
-            var tgl1 = $('#txtTgl').val().replace(/-/g, '/');
-            var tgl2 = $('#txtTgl2').val().replace(/-/g, '/');
-            loadDataPO(tgl1, tgl2, $('#lstSupplier').val(), $('#lstStatus').val());
-        }
+        function nextBatch() { currentPage++; loadDataPO(); }
 
         $(document).ready(function() {
-            // Load data saat pertama kali buka halaman
             loadDataPO();
-
-            // Select2 Vendor
             $('#lstSupplier').select2({
                 placeholder: "--- Pilih Supplier ---",
                 allowClear: true,
-                width: '100%',
+                width: '350px',
                 ajax: {
                     url: '../Vendor/list.php',
                     dataType: 'json',
@@ -127,7 +112,7 @@ $ajax_end = str_replace('-', '/', $date2);
                     processResults: function (data) {
                         return { 
                             results: $.map(data.data, function (obj) { return { id: obj.vendorNo, text: obj.name }; }),
-                            pagination: { more: (data.pagination && data.pagination.more) }
+                            pagination: { more: data.pagination.more }
                         };
                     }
                 }
@@ -135,75 +120,90 @@ $ajax_end = str_replace('-', '/', $date2);
         });
 
         function clickDetail(no) { window.location="printPO.php?nomor_po="+no; }
-        function clickSJ(no) { 
-            var win = window.open('newPrintSJ.php?nomor_po='+no, '_blank');
-            win.focus();
-        }
+        function clickSJ(no) { window.open('newPrintSJ.php?nomor_po='+no, '_blank'); }
     </script>
 
     <style>
-        .myTable th { background-color:#2E5E79; color:#FFF; padding:10px; }
+        .box h2 { background: #2E5E79; color: #fff; padding: 10px; margin: 0; font-size: 16px; }
+        .block { padding: 15px; }
+        .form td { padding: 8px 5px; vertical-align: middle; }
+        .col1 { width: 130px; font-weight: bold; font-size: 13px; }
+        .myTable th { background-color:#2E5E79; color:#FFF; padding:10px; text-align:center; }
         .myTable td { padding:8px; border-bottom:1px solid #ddd; font-size:12px; }
         .action-link { color: #2E5E79; cursor: pointer; text-decoration: underline; font-weight: bold; }
-        #btnLoadMore { margin: 20px; padding: 8px 20px; cursor: pointer; display:none; background: #2E5E79; color: white; border: none; border-radius: 4px; }
+        
+        /* Styling HTML5 Date Input agar rapi */
+        input[type="date"] {
+            padding: 4px;
+            border: 1px solid #aaa;
+            font-family: inherit;
+        }
+        
+        .select2-container--default .select2-selection--single { border-radius: 0; height: 30px; border: 1px solid #aaa; }
+        #btnLoadMore { margin: 20px; padding: 10px 25px; cursor: pointer; background: #2E5E79; color: white; border: none; display:none; }
     </style>
 </head>
 <body>
     <div class="box round first fullpage" style="padding:20px;">
-        <h2>Daftar Purchasing Order (Accurate: Pesanan Pembelian)</h2>
+        <h2>Daftar Purchase Order (HTML5 Paging)</h2>
         <div class="block">
-            <table class="form">
-                <tr>
-                    <td style="width:10%;">Status</td>
-                    <td>
-                        <select id="lstStatus" style="width:250px;">
-                            <option value="%" <?= ($status=="%")?'selected':'' ?>>ALL</option>
-                            <option value="DRAFT" <?= ($status=="DRAFT")?'selected':'' ?>>DRAFT</option>
-                            <option value="ONPROCESS" <?= ($status=="ONPROCESS")?'selected':'' ?>>ONPROCESS</option>
-                            <option value="WAITING" <?= ($status=="WAITING")?'selected':'' ?>>WAITING</option>
-                            <option value="FULLRECEIVED" <?= ($status=="FULLRECEIVED")?'selected':'' ?>>FULLRECEIVED</option>
-                            <option value="CLOSED" <?= ($status=="CLOSED")?'selected':'' ?>>CLOSED</option>
-                            <option value="REJECTED" <?= ($status=="REJECTED")?'selected':'' ?>>REJECTED</option>
-                        </select>
-                    </td>
-                </tr>
-                <tr>
-                    <td>Supplier</td>
-                    <td style="width:400px;">
-                        <select id="lstSupplier">
-                            <option value="<?= $supplier ?>" selected><?= ($supplier == "%") ? "All" : $supplier ?></option>
-                        </select>
-                    </td>
-                </tr>
-                <tr>
-                    <td>Tanggal (d-m-y)</td>
-                    <td>
-                        <input id="txtTgl" type="text" size="15" value="<?= $date ?>" readonly>
-                        <a onclick="callCalendarDMY('txtTgl');" style="cursor:pointer;"><img src="../lib Calendar/cal.gif"></a>
-                        -
-                        <input id="txtTgl2" type="text" size="15" value="<?= $date2 ?>" readonly>
-                        <a onclick="callCalendarDMY('txtTgl2');" style="cursor:pointer;"><img src="../lib Calendar/cal.gif"></a>
-                    </td>
-                </tr>
-                <tr>
-                    <td colspan="2"><input type="button" value="View" onclick="clickView();" style="padding: 5px 20px; cursor:pointer;"></td>
-                </tr>
-            </table>
-
-            <div style="margin-top:20px; overflow:auto; max-height:600px;">
-                <table class="myTable" style="width:100%;">
-                    <thead>
-                        <tr>
-                            <th>No.</th><th>Tanggal</th><th>No. PO</th><th>Vendor</th><th>Status</th><th>Total</th><th>Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody id="bodyTablePO">
-                        </tbody>
+            <form onsubmit="return false;">
+                <table class="form" style="width: auto; margin-left: 0;">
+                    <tr>
+                        <td class="col1">Status</td>
+                        <td>
+                            <select id="lstStatus" style="width: 250px;">
+                                <option value="%" <?= ($status=="%")?'selected':'' ?>>ALL</option>
+                                <option value="DRAFT" <?= ($status=="DRAFT")?'selected':'' ?>>DRAFT</option>
+                                <option value="ONPROCESS" <?= ($status=="ONPROCESS")?'selected':'' ?>>ONPROCESS</option>
+                                <option value="WAITING" <?= ($status=="WAITING")?'selected':'' ?>>WAITING</option>
+                                <option value="FULLRECEIVED" <?= ($status=="FULLRECEIVED")?'selected':'' ?>>FULLRECEIVED</option>
+                                <option value="CLOSED" <?= ($status=="CLOSED")?'selected':'' ?>>CLOSED</option>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="col1">Supplier</td>
+                        <td>
+                            <select id="lstSupplier" <?= ($_SESSION['restricted_nuansa1'] != "%") ? 'disabled="disabled"' : '' ?>>
+                                <?php if($supplier != "%") { ?>
+                                    <option value="<?= $supplier ?>" selected="selected"><?= $supplier ?></option>
+                                <?php } else { ?>
+                                    <option value="%">All</option>
+                                <?php } ?>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="col1">Tanggal</td>
+                        <td>
+                            <input id="txtTgl" type="date" value="<?= $date ?>">
+                            s/d
+                            <input id="txtTgl2" type="date" value="<?= $date2 ?>">
+                        </td>
+                    </tr>
+                    <tr>
+                        <td></td>
+                        <td>
+                            <input type="button" value="View Data PO" onclick="clickView();" style="padding: 6px 25px; cursor: pointer; background: #2E5E79; color: white; border: none; font-weight: bold;">
+                        </td>
+                    </tr>
                 </table>
-                <div align="center">
-                    <button id="btnLoadMore" onclick="nextBatch();">Tampilkan 100 Data Berikutnya</button>
+
+                <div style="margin-top:25px; overflow:auto; max-height:600px;">
+                    <table class="myTable" style="width:100%;">
+                        <thead>
+                            <tr>
+                                <th>No.</th><th>Tanggal</th><th>No. PO</th><th>Vendor</th><th>Status</th><th>Total</th><th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bodyTablePO"></tbody>
+                    </table>
+                    <div align="center">
+                        <button id="btnLoadMore" onclick="nextBatch();">Tampilkan 100 Data Berikutnya</button>
+                    </div>
                 </div>
-            </div>
+            </form>
         </div>
     </div>
 </body>
