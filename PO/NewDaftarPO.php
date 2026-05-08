@@ -150,7 +150,7 @@ $ajax_end = str_replace('-', '/', $date2);
 </head>
 <body>
     <div class="box round first fullpage" style="padding:20px;">
-        <h2>Daftar PO (Murni Paging Accurate)</h2>
+        <h2>Daftar Purchasing Order (Accurate: Pesanan Pembelian)</h2>
         <div class="block">
             <table class="form">
                 <tr>
