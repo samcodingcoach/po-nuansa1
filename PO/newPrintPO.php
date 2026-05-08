@@ -2,6 +2,7 @@
 /**
  * PRINT PURCHASE ORDER - 100% IDENTICAL TO newPrintSJ.php
  * Sesuai Instruksi: Barcode Dihapus, Site dari Warehouse, Tambah Kolom Harga & Total.
+ * Perbaikan Footer: JUMLAH, DISKON, PPn, PPnBM, GRAND TOTAL
  */
 require_once __DIR__ . '/../bootstrap.php';
 
@@ -77,7 +78,8 @@ if ($nomor_po) {
         </tr>
         <tr>
             <td rowspan="2">RE-PRINT</td>
-            <td rowspan="2" valign="middle"></td> <td>NO. PO :</td>
+            <td rowspan="2" valign="middle"></td> 
+            <td>NO. PO :</td>
             <td>T.O.P :</td>
         </tr>
         <tr>
@@ -151,7 +153,7 @@ if ($nomor_po) {
     <table class="table-item" style="margin-top:10px;">
         <tr style="font-weight:bold; text-align:center;">
             <th width="3%" class="line-bottom">NO.</th>
-            <th width="25%" class="line-bottom" align="left">NAMA BARANG</th>
+            <th width="32%" class="line-bottom" align="left">NAMA BARANG</th>
             <th width="10%" class="line-bottom">SITE</th>
             <th width="5%" class="line-bottom">QTY</th>
             <th width="12%" class="line-bottom">HARGA</th>
@@ -183,17 +185,23 @@ if ($nomor_po) {
         <tr>
             <td colspan="3" class="line-bottom"></td>
             <td align="center" style="font-weight:bold;" class="line-bottom"><?php echo number_format($totalQty, 0); ?></td>
-            <td colspan="2" class="line-bottom" align="right" style="font-weight:bold;">SUB TOTAL:</td>
+            <td colspan="2" class="line-bottom" align="right" style="font-weight:bold;">JUMLAH:</td>
             <td class="line-bottom" align="right" style="font-weight:bold;"><?php echo number_format($dataPO['subTotal'], 2, ',', '.'); ?></td>
         </tr>
-        <?php if($dataPO['tax1Amount'] > 0): ?>
         <tr>
-            <td colspan="6" align="right" style="font-weight:bold;">PPN (<?php echo $dataPO['tax1Rate']; ?>%):</td>
+            <td colspan="6" align="right" style="font-weight:bold;">DISKON:</td>
+            <td align="right" style="font-weight:bold;"><?php echo number_format($dataPO['cashDiscount'], 2, ',', '.'); ?></td>
+        </tr>
+        <tr>
+            <td colspan="6" align="right" style="font-weight:bold;">PPn:</td>
             <td align="right" style="font-weight:bold;"><?php echo number_format($dataPO['tax1Amount'], 2, ',', '.'); ?></td>
         </tr>
-        <?php endif; ?>
         <tr>
-            <td colspan="6" align="right" style="font-weight:bold; font-size:12px;">TOTAL AKHIR:</td>
+            <td colspan="6" align="right" style="font-weight:bold;">PPnBM:</td>
+            <td align="right" style="font-weight:bold;">0,00</td>
+        </tr>
+        <tr>
+            <td colspan="6" align="right" style="font-weight:bold; font-size:12px;">GRAND TOTAL:</td>
             <td align="right" style="font-weight:bold; font-size:12px; border-bottom: 2px solid black;"><?php echo number_format($dataPO['totalAmount'], 2, ',', '.'); ?></td>
         </tr>
     </table>
