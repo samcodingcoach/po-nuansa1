@@ -1,54 +1,47 @@
 <?php
 /**
  * File: api/vendor/list.php
- * Deskripsi: Mengambil daftar pemasok (vendor) dari Accurate Online
- * Versi Kompatibel: PHP 5.6
+ * Prosedur: Paginasi Murni Accurate
  */
 
-// 1. Muat konfigurasi utama
-// Ganti jumlah '../' sesuai dengan kedalaman folder tempat Anda menaruh file ini
 require_once __DIR__ . '/../bootstrap.php';
-
-// 3. Set header agar output berupa JSON
 header('Content-Type: application/json; charset=UTF-8');
 
-// Inisialisasi API
 $api = new AccurateAPI();
 
-// Tangkap parameter dari URL (Paginasi) dengan ternary operator ala PHP 5.6
+// Tangkap nomor halaman dari request Select2 (default ke halaman 1)
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-$pageSize = isset($_GET['pageSize']) ? (int)$_GET['pageSize'] : 100;
+// Gunakan pageSize 100 sesuai keinginan Anda
+$pageSize = 100;
 
 $params = array(
-    'sp.page' => $page,
-    'sp.pageSize' => $pageSize
+    'sp.page'     => $page,
+    'sp.pageSize' => $pageSize,
+    'sp.sort'     => 'name|asc' // Mengurutkan berdasarkan nama
 );
 
-// Panggil fungsi dari AccurateAPI.php
+// Tambahkan filter kata kunci jika user mengetik di kotak search Select2
+if (isset($_GET['search']) && $_GET['search'] != '') {
+    $params['filter.keywords'] = $_GET['search'];
+}
+
 $result = $api->getVendorList($params);
 
-// Format dan kembalikan response
 if ($result['success']) {
-    // Ambil array list vendor dari dalam index 'd' bawaan Accurate
-    $responseData = isset($result['data']['d']) ? $result['data']['d'] : $result['data'];
+    $responseData = isset($result['data']['d']) ? $result['data']['d'] : array();
     
     echo json_encode(array(
         'status'  => 'success',
-        'message' => 'Berhasil mengambil daftar vendor',
-        'data'    => $responseData
-    ), JSON_PRETTY_PRINT);
-
+        'data'    => $responseData,
+        // Prosedur teknis agar Select2 tahu ada data selanjutnya (101-200, dst)
+        'pagination' => array(
+            'more' => (count($responseData) === $pageSize) 
+        )
+    ));
 } else {
-    // Set HTTP code ke 400 (Bad Request) jika terjadi error
     http_response_code(400);
-    
-    // PHP 5.6: Hindari penggunaan operator ??
-    $errorInfo = isset($result['error']) ? $result['error'] : 'Terjadi kesalahan yang tidak diketahui';
-    
     echo json_encode(array(
         'status'  => 'error',
-        'message' => 'Gagal mengambil data vendor: ' . $errorInfo,
-        'data'    => null
-    ), JSON_PRETTY_PRINT);
+        'message' => isset($result['error']) ? $result['error'] : 'Gagal'
+    ));
 }
-?>
