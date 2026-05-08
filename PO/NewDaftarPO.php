@@ -33,6 +33,12 @@ if ($status != "%") {
     $params['filter.status.op'] = 'EQUAL';
     $params['filter.status.val'] = $status;
 }
+
+// Handling Supplier jika kosong atau reset
+if ($supplier == "" || $supplier == "null" || $supplier == null) {
+    $supplier = "%";
+}
+
 if ($supplier != "%") {
     $params['filter.vendorNo'] = $supplier;
 }
@@ -53,34 +59,46 @@ $poData = ($resPO['success'] && isset($resPO['data']['d'])) ? $resPO['data']['d'
 
     <script type="text/javascript">
         function clickView() {
+            var valSupplier = $('#lstSupplier').val();
+            // Jika reset (x) diklik, pastikan mengirim % (All)
+            if (!valSupplier || valSupplier === null || valSupplier === "") {
+                valSupplier = "%";
+            }
+            
             window.location="NewDaftarPO.php?status="+$('#lstStatus').val()+
-                            "&supplier="+$('#lstSupplier').val()+
+                            "&supplier="+valSupplier+
                             "&tanggal="+$('#txtTgl').val()+
                             "&tanggal2="+$('#txtTgl2').val();
         }
 
+        function clickDetail(PONumber) {
+            window.location="printPO.php?nomor_po="+PONumber;
+        }
+        
+        function clickSJ(PONumber) {
+            var printWindow = window.open('newPrintSJ.php?nomor_po='+PONumber, 'printSJ', 'menubar=no,status=no,scrollbars=yes,width=900,height=600');
+            printWindow.onload = function() {
+                printWindow.focus();
+                printWindow.print();
+            };
+        }
+
         $(document).ready(function() {
-            $('#lstSupplier').select2({
+            var $select = $('#lstSupplier').select2({
                 placeholder: "--- Pilih Supplier ---",
-                allowClear: true, // Tombol X untuk reset
+                allowClear: true, 
                 width: '100%',
                 ajax: {
                     url: '../Vendor/list.php', 
                     dataType: 'json',
                     delay: 300,
                     data: function (params) {
-                        return {
-                            search: params.term, // Kata kunci dikirim ke PHP
-                            page: params.page || 1
-                        };
+                        return { search: params.term, page: params.page || 1 };
                     },
                     processResults: function (response, params) {
                         params.page = params.page || 1;
                         var mapped = $.map(response.data, function (obj) {
-                            return {
-                                id: obj.vendorNo, // Value saat form dikirim
-                                text: obj.name    // Teks yang tampil di dropdown & kotak select
-                            };
+                            return { id: obj.vendorNo, text: obj.name };
                         });
                         return {
                             results: mapped,
@@ -90,12 +108,22 @@ $poData = ($resPO['success'] && isset($resPO['data']['d'])) ? $resPO['data']['d'
                     cache: true
                 }
             });
+
+            // Handling tombol Reset (X) agar kembali ke ALL (%)
+            $select.on('change', function() {
+                if ($(this).val() === null || $(this).val() === "") {
+                    // Jika dikosongkan, kita set secara visual ke opsi All
+                    var newOption = new Option("All", "%", true, true);
+                    $('#lstSupplier').append(newOption).trigger('change.select2');
+                }
+            });
         });
     </script>
     <style>
         .myTable th { background-color:#2E5E79; color:#FFF; padding:10px; text-align:center; }
         .myTable td { padding:8px; border-bottom:1px solid #ddd; font-size:12px; }
         .select2-container--default .select2-selection--single { height:32px !important; border-radius:0px !important; }
+        .action-link { color: #2E5E79; cursor: pointer; text-decoration: underline; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -121,8 +149,9 @@ $poData = ($resPO['success'] && isset($resPO['data']['d'])) ? $resPO['data']['d'
                     <td>Supplier</td>
                     <td style="width:400px;">
                         <select id="lstSupplier">
-                            <option value="%">All</option>
-                            <? if($supplier != "%") { ?>
+                            <? if($supplier == "%") { ?>
+                                <option value="%" selected>All</option>
+                            <? } else { ?>
                                 <option value="<?= $supplier ?>" selected><?= $supplier ?></option>
                             <? } ?>
                         </select>
@@ -147,7 +176,13 @@ $poData = ($resPO['success'] && isset($resPO['data']['d'])) ? $resPO['data']['d'
                 <table class="myTable" style="width:100%;">
                     <thead>
                         <tr>
-                            <th>No.</th><th>Tanggal</th><th>No. PO</th><th>Vendor</th><th>Status</th><th>Total</th>
+                            <th style="width:3%;">No.</th>
+                            <th style="width:10%;">Tanggal</th>
+                            <th style="width:15%;">No. PO</th>
+                            <th style="width:30%;">Vendor</th>
+                            <th style="width:10%;">Status</th>
+                            <th style="width:15%;">Total</th>
+                            <th style="width:17%;">Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -159,6 +194,12 @@ $poData = ($resPO['success'] && isset($resPO['data']['d'])) ? $resPO['data']['d'
                             <td><?= $poRow['vendor']['name'] ?></td>
                             <td align="center"><?= $poRow['status'] ?></td>
                             <td align="right"><?= number_format($poRow['totalAmount'], 2, ",", ".") ?></td>
+                            <td align="center">
+                                <span class="action-link" onclick="clickDetail('<?= $poRow['number'] ?>');">Detail</span>
+                                <? if($poRow['status'] != "REJECTED" && $poRow['status'] != "DRAFT") { ?>
+                                     | <span class="action-link" onclick="clickSJ('<?= $poRow['number'] ?>');">Surat Jalan</span>
+                                <? } ?>
+                            </td>
                         </tr>
                     <? } ?>
                     </tbody>
