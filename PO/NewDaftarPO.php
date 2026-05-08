@@ -68,9 +68,12 @@ $ajax_end = str_replace('-', '/', $date2);
                     if (currentPage === 1) $('#bodyTablePO').empty();
                     
                     if (response.success && response.data.d.length > 0) {
+                        // Ganti angka 100 menjadi 2 (sesuai pageSize Anda)
                         $.each(response.data.d, function(i, item) {
+                            var nomorUrut = ((currentPage - 1) * 2) + (i + 1); // Pengali disesuaikan jadi 2
+                            
                             var row = `<tr>
-                                <td align="center">${((currentPage - 1) * 100) + (i + 1)}</td>
+                                <td align="center">${nomorUrut}</td>
                                 <td align="center">${item.transDate}</td>
                                 <td>${item.number}</td>
                                 <td>${item.vendor.name}</td>
