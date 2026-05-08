@@ -21,6 +21,7 @@ PO/*
 !PO/list_po.php
 !PO/newPrintSJ.php
 !PO/NewDaftarPO.php
+!PO/newPrintPO.php
 
 PriceList/
 Product/
