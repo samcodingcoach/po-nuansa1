@@ -47,6 +47,18 @@ if ($nomor_po) {
         table { border-collapse: collapse; width: 100%; }
         .table-item td, .table-item th { border: 0; padding: 6px 4px; }
         .line-bottom { border-bottom: 1px solid black; }
+        .btn-print {
+            margin-top: 20px;
+            padding: 10px 25px;
+            background-color: #2E5E79;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .btn-print:hover { background-color: #1a3d52; }
         @media print {
             .no-print { display: none; }
             body { padding: 0; }
@@ -234,6 +246,10 @@ if ($nomor_po) {
 
     <div style="border: 2px solid black; padding:8px; margin-top:15px; font-weight:bold;">
         PERHATIAN: Setelah barang dikirim, Supplier wajib mengambil SPB (Surat Penerimaan Barang), KECUALI Supplier Luar Kota
+    </div>
+
+    <div align="center" class="no-print">
+        <button class="btn-print" onclick="window.print();">Cetak Purchase Order</button>
     </div>
 </body>
 </html>
