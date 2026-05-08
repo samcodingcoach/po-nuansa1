@@ -1,16 +1,15 @@
 <?php
 session_start();
-// Pastikan path include ini benar sesuai struktur folder Anda
 include('../StructureIndex/head-library.php');
 include('../Connection/validateSession.php');
 require_once("../classes/AccurateAPI.php");
 
 $api = new AccurateAPI();
 
-// 1. Logika Filter & Tanggal (Sesuai kode asli Anda)
 $status = isset($_REQUEST['status']) ? $_REQUEST['status'] : "%";
 $supplier = isset($_REQUEST['supplier']) ? $_REQUEST['supplier'] : "%";
 
+// Manajemen Tanggal
 if(!isset($_REQUEST['tanggal'])) {
     $date = date("d-m-Y", mktime(date("H"),date("i"),date("s"),date("m")-1,date("d"),date("Y")));
 } else { $date = $_REQUEST['tanggal']; }
@@ -19,7 +18,7 @@ if(!isset($_REQUEST['tanggal2'])) {
     $date2 = date("d-m-Y");
 } else { $date2 = $_REQUEST['tanggal2']; }
 
-// 2. Ambil data PO untuk Tabel
+// Integrasi Accurate PO
 $api_start = str_replace('-', '/', $date);
 $api_end = str_replace('-', '/', $date2);
 
@@ -44,7 +43,7 @@ $poData = ($resPO['success'] && isset($resPO['data']['d'])) ? $resPO['data']['d'
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Daftar PO</title>
+    <title>Daftar Purchase Order</title>
     <script language="javascript" src="../lib Calendar/calendar.js"></script>
     <script language="javascript" src="../lib Calendar/datetimepicker.js"></script>
     
@@ -63,35 +62,29 @@ $poData = ($resPO['success'] && isset($resPO['data']['d'])) ? $resPO['data']['d'
         $(document).ready(function() {
             $('#lstSupplier').select2({
                 placeholder: "--- Pilih Supplier ---",
-                allowClear: true,
+                allowClear: true, // Tombol X untuk reset
                 width: '100%',
                 ajax: {
-                    // JALUR SESUAI STRUKTUR: Keluar dari folder PO, masuk ke Vendor
                     url: '../Vendor/list.php', 
                     dataType: 'json',
-                    delay: 250,
+                    delay: 300,
                     data: function (params) {
                         return {
-                            search: params.term,
+                            search: params.term, // Kata kunci dikirim ke PHP
                             page: params.page || 1
                         };
                     },
                     processResults: function (response, params) {
                         params.page = params.page || 1;
-                        
-                        // Mapping data vendorNo -> id, name -> text
                         var mapped = $.map(response.data, function (obj) {
                             return {
-                                id: obj.vendorNo,
-                                text: obj.name
+                                id: obj.vendorNo, // Value saat form dikirim
+                                text: obj.name    // Teks yang tampil di dropdown & kotak select
                             };
                         });
-
                         return {
                             results: mapped,
-                            pagination: {
-                                more: response.pagination.more
-                            }
+                            pagination: { more: response.pagination.more }
                         };
                     },
                     cache: true
@@ -100,9 +93,9 @@ $poData = ($resPO['success'] && isset($resPO['data']['d'])) ? $resPO['data']['d'
         });
     </script>
     <style>
-        .myTable th { background-color:#2E5E79; color:#FFF; padding:10px; }
-        .myTable td { padding:8px; border-bottom:1px solid #ddd; }
-        .select2-container--default .select2-selection--single { height:30px !important; border-radius:0px !important; }
+        .myTable th { background-color:#2E5E79; color:#FFF; padding:10px; text-align:center; }
+        .myTable td { padding:8px; border-bottom:1px solid #ddd; font-size:12px; }
+        .select2-container--default .select2-selection--single { height:32px !important; border-radius:0px !important; }
     </style>
 </head>
 <body>
@@ -117,6 +110,10 @@ $poData = ($resPO['success'] && isset($resPO['data']['d'])) ? $resPO['data']['d'
                             <option value="%" <?= ($status=="%")?'selected':'' ?>>ALL</option>
                             <option value="DRAFT" <?= ($status=="DRAFT")?'selected':'' ?>>DRAFT</option>
                             <option value="ONPROCESS" <?= ($status=="ONPROCESS")?'selected':'' ?>>ONPROCESS</option>
+                            <option value="WAITING" <?= ($status=="WAITING")?'selected':'' ?>>WAITING</option>
+                            <option value="FULLRECEIVED" <?= ($status=="FULLRECEIVED")?'selected':'' ?>>FULLRECEIVED</option>
+                            <option value="CLOSED" <?= ($status=="CLOSED")?'selected':'' ?>>CLOSED</option>
+                            <option value="REJECTED" <?= ($status=="REJECTED")?'selected':'' ?>>REJECTED</option>
                         </select>
                     </td>
                 </tr>
@@ -124,6 +121,7 @@ $poData = ($resPO['success'] && isset($resPO['data']['d'])) ? $resPO['data']['d'
                     <td>Supplier</td>
                     <td style="width:400px;">
                         <select id="lstSupplier">
+                            <option value="%">All</option>
                             <? if($supplier != "%") { ?>
                                 <option value="<?= $supplier ?>" selected><?= $supplier ?></option>
                             <? } ?>
@@ -145,7 +143,7 @@ $poData = ($resPO['success'] && isset($resPO['data']['d'])) ? $resPO['data']['d'
                 </tr>
             </table>
 
-            <div style="margin-top:20px;">
+            <div style="margin-top:20px; overflow:auto; max-height:500px;">
                 <table class="myTable" style="width:100%;">
                     <thead>
                         <tr>
