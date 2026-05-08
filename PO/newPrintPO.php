@@ -1,7 +1,7 @@
 <?php
 /**
- * PRINT PURCHASE ORDER - IDENTICAL TO newPrintSJ.php (A-Z)
- * Sesuai instruksi: 100% mirip, tanpa barcode, hanya tambah kolom Harga, Diskon, & Jumlah.
+ * PRINT PURCHASE ORDER - 100% IDENTICAL TO newPrintSJ.php
+ * Sesuai Instruksi: Barcode Dihapus, Site dari Warehouse, Tambah Kolom Harga & Total.
  */
 require_once __DIR__ . '/../bootstrap.php';
 
@@ -17,7 +17,6 @@ if ($nomor_po) {
     if ($poRes['success'] && isset($poRes['data']['d'])) {
         $dataPO = $poRes['data']['d'];
         
-        // 1. Ambil branchId (Flat)
         $bId = isset($dataPO['branchId']) ? $dataPO['branchId'] : null;
         if ($bId) {
             $bRes = $api->getBranchDetail($bId);
@@ -26,7 +25,6 @@ if ($nomor_po) {
             }
         }
 
-        // 2. Get Detail Vendor
         $vNo = isset($dataPO['vendor']['vendorNo']) ? $dataPO['vendor']['vendorNo'] : null;
         if ($vNo) {
             $vRes = $api->getVendorDetail(null, $vNo);
@@ -153,8 +151,9 @@ if ($nomor_po) {
     <table class="table-item" style="margin-top:10px;">
         <tr style="font-weight:bold; text-align:center;">
             <th width="3%" class="line-bottom">NO.</th>
-            <th width="32%" class="line-bottom" align="left">NAMA BARANG</th>
-            <th width="8%" class="line-bottom">QTY</th>
+            <th width="25%" class="line-bottom" align="left">NAMA BARANG</th>
+            <th width="10%" class="line-bottom">SITE</th>
+            <th width="5%" class="line-bottom">QTY</th>
             <th width="12%" class="line-bottom">HARGA</th>
             <th width="15%" class="line-bottom">DISKON</th>
             <th width="15%" class="line-bottom">JUMLAH</th>
@@ -164,7 +163,6 @@ if ($nomor_po) {
         if (isset($dataPO['detailItem'])) {
             foreach ($dataPO['detailItem'] as $idx => $item) {
                 $totalQty += $item['quantity'];
-                
                 $discPercent = (isset($item['lastItemDiscPercent']) && $item['lastItemDiscPercent'] != '') ? "(" . trim($item['lastItemDiscPercent']) . "%) " : "";
                 $discCash = (isset($item['lastItemCashDiscount']) && $item['lastItemCashDiscount'] != 0) ? "(" . number_format($item['lastItemCashDiscount'], 0, ',', '.') . ")" : "";
                 $displayDiscount = trim($discPercent . $discCash);
@@ -172,6 +170,7 @@ if ($nomor_po) {
                 <tr>
                     <td align="center"><?php echo $idx + 1; ?></td>
                     <td><?php echo $item['detailName']; ?></td>
+                    <td align="center"><?php echo isset($item['warehouse']['name']) ? $item['warehouse']['name'] : '-'; ?></td>
                     <td align="center"><?php echo number_format($item['quantity'], 0); ?></td>
                     <td align="right"><?php echo number_format($item['unitPrice'], 2, ',', '.'); ?></td>
                     <td align="center"><?php echo ($displayDiscount != '') ? $displayDiscount : ''; ?></td>
@@ -182,19 +181,19 @@ if ($nomor_po) {
         }
         ?>
         <tr>
-            <td colspan="2" class="line-bottom"></td>
+            <td colspan="3" class="line-bottom"></td>
             <td align="center" style="font-weight:bold;" class="line-bottom"><?php echo number_format($totalQty, 0); ?></td>
             <td colspan="2" class="line-bottom" align="right" style="font-weight:bold;">SUB TOTAL:</td>
             <td class="line-bottom" align="right" style="font-weight:bold;"><?php echo number_format($dataPO['subTotal'], 2, ',', '.'); ?></td>
         </tr>
         <?php if($dataPO['tax1Amount'] > 0): ?>
         <tr>
-            <td colspan="5" align="right" style="font-weight:bold;">PPN (<?php echo $dataPO['tax1Rate']; ?>%):</td>
+            <td colspan="6" align="right" style="font-weight:bold;">PPN (<?php echo $dataPO['tax1Rate']; ?>%):</td>
             <td align="right" style="font-weight:bold;"><?php echo number_format($dataPO['tax1Amount'], 2, ',', '.'); ?></td>
         </tr>
         <?php endif; ?>
         <tr>
-            <td colspan="5" align="right" style="font-weight:bold; font-size:12px;">TOTAL AKHIR:</td>
+            <td colspan="6" align="right" style="font-weight:bold; font-size:12px;">TOTAL AKHIR:</td>
             <td align="right" style="font-weight:bold; font-size:12px; border-bottom: 2px solid black;"><?php echo number_format($dataPO['totalAmount'], 2, ',', '.'); ?></td>
         </tr>
     </table>
