@@ -119,7 +119,7 @@ if(!isset($_REQUEST['tanggal2'])) {
             });
         });
 
-        function clickDetail(no) { window.location="printPO.php?nomor_po="+no; }
+        function clickDetail(no) { window.open('newPrintPO.php?nomor_po='+no, '_blank');  }
         function clickSJ(no) { window.open('newPrintSJ.php?nomor_po='+no, '_blank'); }
     </script>
 
