@@ -221,14 +221,24 @@ class AccurateAPI {
 
     public function getPurchaseOrderList($params = array()) {
         $endpoint = 'accurate/api/purchase-order/list.do';
+        
+        // Default parameter dasar
         $defaultParams = array(
             'sp.page' => 1,
-            'sp.pageSize' => 200,
+            'sp.pageSize' => 2,
             'fields' => 'id,number,transDate,dueDate,totalAmount,status,statusName,vendor,vendor.name',
         );
+        
+        // Menggabungkan parameter default dengan parameter dinamis dari list_po.php
         $finalParams = array_merge($defaultParams, $params);
         
-        return $this->makeGetRequest($endpoint, $finalParams);
+        // Membangun URL dengan query string (GET Request)
+        $url = $this->host . '/' . $endpoint;
+        if (!empty($finalParams)) {
+            $url .= '?' . http_build_query($finalParams);
+        }
+        
+        return $this->executeCurl($url, 'GET');
     }
 
     public function getPurchaseOrderDetail($purchaseOrderNumber) {
@@ -245,10 +255,7 @@ class AccurateAPI {
         return $this->makeGetRequest($endpoint, $params);
     }
 
-    /**
-     * Mendapatkan daftar Pemasok (Vendor)
-     * Scope: vendor_view
-     */
+   
     public function getVendorList($params = array(), $page = null) {
         $endpoint = 'accurate/api/vendor/list.do';
         

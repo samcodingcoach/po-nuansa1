@@ -2,7 +2,7 @@
 /**
  * API untuk mendapatkan list purchase order dalam format JSON
  * Versi Kompatibel: PHP 5.6
- * File: /purchaseorder/list_po.php
+ * File: /PO/list_po.php
  */
 
 require_once __DIR__ . '/../bootstrap.php';
@@ -20,70 +20,57 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 }
 
 try {
-    // Inisialisasi AccurateAPI (Versi 5.6)
     $api = new AccurateAPI();
-    
-    // Siapkan filter dinamis
     $extraParams = array();
     
-    // ======================================================================
-    // 1. FILTER VENDOR BERDASARKAN NOMOR VENDOR (Direct String)
-    // ======================================================================
-    if (isset($_GET['vendorNo']) && !empty($_GET['vendorNo'])) {
-        // Langsung diisi string tanpa .op dan .val sesuai dokumentasi
+    // 1. Paginasi (Menerima parameter 'page' dari request frontend)
+    $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+    $pageSize = 2; // Konsisten dengan limit di AccurateAPI.php
+    
+    $extraParams['sp.page'] = $page;
+    $extraParams['sp.pageSize'] = $pageSize;
+
+    // 2. Filter Vendor
+    if (isset($_GET['vendorNo']) && !empty($_GET['vendorNo']) && $_GET['vendorNo'] !== '%') {
         $extraParams['filter.vendorNo'] = $_GET['vendorNo'];
     }
 
-    // 2. Paginasi
-    if (isset($_GET['page'])) {
-        $extraParams['sp.page'] = $_GET['page'];
-    }
-    
-    // ======================================================================
-    // 3. FILTER TANGGAL PENGAKUAN TRANSAKSI (transDate)
-    // ======================================================================
-    
-    // Skenario A: Rentang Tanggal (BETWEEN) menggunakan fromDate & toDate
+    // 3. Filter Tanggal (Range)
     if (isset($_GET['fromDate']) && !empty($_GET['fromDate']) && 
         isset($_GET['toDate']) && !empty($_GET['toDate'])) {
         
         $extraParams['filter.transDate.op'] = 'BETWEEN';
-        // Gunakan index [0] dan [1] karena operator BETWEEN butuh 2 parameter
         $extraParams['filter.transDate.val[0]'] = $_GET['fromDate']; 
         $extraParams['filter.transDate.val[1]'] = $_GET['toDate'];
-        
     } 
-    // Skenario B: Satu Tanggal Spesifik (EQUAL) menggunakan transDate
-    elseif (isset($_GET['transDate']) && !empty($_GET['transDate'])) {
-        
-        $extraParams['filter.transDate.op'] = 'EQUAL';
-        $extraParams['filter.transDate.val'] = $_GET['transDate']; 
-        
-    }
     
-    // Panggil fungsi dengan parameter yang sudah disiapkan
+    // Panggil fungsi API
     $result = $api->getPurchaseOrderList($extraParams);
     
     if ($result['success']) {
-        // Meniadakan raw_response agar output JSON bersih
+        $responseData = isset($result['data']['d']) ? $result['data']['d'] : array();
+        
+        // Menambahkan metadata paginasi untuk frontend
+        $result['pagination'] = array(
+            'more' => (count($responseData) === $pageSize)
+        );
+
+        // Bersihkan raw_response agar output JSON tidak terlalu besar
         if (isset($result['raw_response'])) {
             unset($result['raw_response']);
         }
+        
         echo json_encode($result, JSON_PRETTY_PRINT);
     } else {
-        $errorMessage = isset($result['error']) ? $result['error'] : 'Failed to fetch purchase order data';
-        
-        $errorResponse = array(
-            'success' => false,
-            'message' => $errorMessage
-        );
-        echo json_encode($errorResponse, JSON_PRETTY_PRINT);
+        echo json_encode(array(
+            'success' => false, 
+            'message' => isset($result['error']) ? $result['error'] : 'Gagal mengambil data PO'
+        ), JSON_PRETTY_PRINT);
     }
 } catch (Exception $e) {
-    $exceptionResponse = array(
-        'success' => false,
-        'message' => 'Error: ' . $e->getMessage()
-    );
-    echo json_encode($exceptionResponse, JSON_PRETTY_PRINT);
+    echo json_encode(array(
+        'success' => false, 
+        'message' => $e->getMessage()
+    ), JSON_PRETTY_PRINT);
 }
 ?>
