@@ -130,16 +130,44 @@ function bar128($text) {
                         <td></td>
                         <td>
                             <?php 
-                            $output = trim((isset($dataVendor['billCity']) ? $dataVendor['billCity'] : '') . 
-                                    ($dataVendor['billCity'] && $dataVendor['billProvince'] ? ' - ' : '') . 
-                                    (isset($dataVendor['billProvince']) ? $dataVendor['billProvince'] : ''));
-                            
-                            echo ($output !== '') ? $output : '-';
+                                $street = isset($dataVendor['billStreet']) ? trim($dataVendor['billStreet']) : '';
+                                $city = isset($dataVendor['billCity']) ? trim($dataVendor['billCity']) : '';
+                                $province = isset($dataVendor['billProvince']) ? trim($dataVendor['billProvince']) : '';
+
+                                $output = $street;
+
+                                // Tambahkan Kota jika ada (pisahkan dengan koma jika jalan sudah ada)
+                                if ($city !== '') {
+                                    $output .= ($output !== '' ? ', ' : '') . $city;
+                                }
+
+                                // Tambahkan Provinsi jika ada (pisahkan dengan tanda hubung jika sudah ada isi sebelumnya)
+                                if ($province !== '') {
+                                    $output .= ($output !== '' ? ' - ' : '') . $province;
+                                }
+
+                                echo ($output !== '') ? $output : '-';
                             ?>
                         </td>
                     </tr>
-                    <tr><td>TELEPON:</td><td><?php echo isset($dataVendor['mobilePhone']) ? $dataVendor['mobilePhone'] : '-'; ?></td></tr>
-                    <tr><td>CONTACT:</td><td><?php echo isset($dataVendor['detailContact'][0]['name']) ? $dataVendor['detailContact'][0]['name'] : '-'; ?></td></tr>
+                    <tr>
+                        <td>&nbsp;</td>
+                        <td></td>
+                            
+                    </tr>
+
+                    <tr>
+                        <td>TELEPON:</td>
+                        <td><?php echo isset($dataVendor['mobilePhone']) ? $dataVendor['mobilePhone'] : '-'; ?></td>
+                    </tr>
+                    <tr>
+                        <td>EMAIL:</td>
+                        <td><?php echo isset($dataVendor['email']) ? $dataVendor['email'] : '-'; ?></td>
+                    </tr>
+                    <tr>
+                        <td>CONTACT:</td>
+                        <td><?php echo isset($dataVendor['detailContact'][0]['name']) ? $dataVendor['detailContact'][0]['name'] : '-'; ?></td>
+                    </tr>
                 </table>
             </td>
             <td width="50%" valign="top" style="padding:8px;">

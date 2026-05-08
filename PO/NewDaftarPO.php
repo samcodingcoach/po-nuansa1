@@ -145,7 +145,7 @@ if(!isset($_REQUEST['tanggal2'])) {
 </head>
 <body>
     <div class="box round first fullpage" style="padding:20px;">
-        <h2>Daftar Purchase Order (HTML5 Paging)</h2>
+        <h2>Daftar PO (Accurate: Pesanan Pembelian)</h2>
         <div class="block">
             <form onsubmit="return false;">
                 <table class="form" style="width: auto; margin-left: 0;">
