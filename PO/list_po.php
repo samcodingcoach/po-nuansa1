@@ -25,7 +25,7 @@ try {
     
     // 1. Paginasi (Menerima parameter 'page' dari request frontend)
     $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-    $pageSize = 2; // Konsisten dengan limit di AccurateAPI.php
+    $pageSize = 100; // Konsisten dengan limit di AccurateAPI.php
     
     $extraParams['sp.page'] = $page;
     $extraParams['sp.pageSize'] = $pageSize;

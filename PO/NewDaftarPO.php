@@ -4,12 +4,10 @@ include('../StructureIndex/head-library.php');
 include('../Connection/validateSession.php');
 require_once("../classes/AccurateAPI.php");
 
-$api = new AccurateAPI();
-
 $status = isset($_REQUEST['status']) ? $_REQUEST['status'] : "%";
 $supplier = isset($_REQUEST['supplier']) ? $_REQUEST['supplier'] : "%";
 
-// Manajemen Tanggal
+// 1. Ambil Tanggal dari Request (Format d-m-Y)
 if(!isset($_REQUEST['tanggal'])) {
     $date = date("d-m-Y", mktime(date("H"),date("i"),date("s"),date("m")-1,date("d"),date("Y")));
 } else { $date = $_REQUEST['tanggal']; }
@@ -18,123 +16,144 @@ if(!isset($_REQUEST['tanggal2'])) {
     $date2 = date("d-m-Y");
 } else { $date2 = $_REQUEST['tanggal2']; }
 
-// Integrasi Accurate PO
-$api_start = str_replace('-', '/', $date);
-$api_end = str_replace('-', '/', $date2);
-
-$params = array(
-    'filter.transDate.op'     => 'BETWEEN',
-    'filter.transDate.val[0]' => $api_start,
-    'filter.transDate.val[1]' => $api_end,
-    'sp.pageSize'             => 500
-);
-
-if ($status != "%") {
-    $params['filter.status.op'] = 'EQUAL';
-    $params['filter.status.val'] = $status;
-}
-
-// Handling Supplier jika kosong atau reset
-if ($supplier == "" || $supplier == "null" || $supplier == null) {
-    $supplier = "%";
-}
-
-if ($supplier != "%") {
-    $params['filter.vendorNo'] = $supplier;
-}
-
-$resPO = $api->getPurchaseOrderList($params);
-$poData = ($resPO['success'] && isset($resPO['data']['d'])) ? $resPO['data']['d'] : array();
+// 2. Konversi Tanggal ke Format Accurate (d/m/Y) untuk dikirim via AJAX
+$ajax_start = str_replace('-', '/', $date);
+$ajax_end = str_replace('-', '/', $date2);
 ?>
 <!DOCTYPE html>
 <html>
 <head>
     <title>Daftar Purchase Order</title>
-    <script language="javascript" src="../lib Calendar/calendar.js"></script>
-    <script language="javascript" src="../lib Calendar/datetimepicker.js"></script>
-    
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script language="javascript" src="../lib Calendar/calendar.js"></script>
+    <script language="javascript" src="../lib Calendar/datetimepicker.js"></script>
 
     <script type="text/javascript">
+        var currentPage = 1;
+
         function clickView() {
-            var valSupplier = $('#lstSupplier').val();
-            // Jika reset (x) diklik, pastikan mengirim % (All)
-            if (!valSupplier || valSupplier === null || valSupplier === "") {
-                valSupplier = "%";
-            }
+            // Saat klik view, ambil nilai tanggal terbaru dari input dan ganti - jadi /
+            var tgl1 = $('#txtTgl').val().replace(/-/g, '/');
+            var tgl2 = $('#txtTgl2').val().replace(/-/g, '/');
+            var supp = $('#lstSupplier').val();
+            var stat = $('#lstStatus').val();
+
+            // Reset ke halaman 1
+            currentPage = 1;
+            $('#bodyTablePO').html('<tr><td colspan="7" align="center">Loading data...</td></tr>');
             
-            window.location="NewDaftarPO.php?status="+$('#lstStatus').val()+
-                            "&supplier="+valSupplier+
-                            "&tanggal="+$('#txtTgl').val()+
-                            "&tanggal2="+$('#txtTgl2').val();
+            loadDataPO(tgl1, tgl2, supp, stat);
         }
 
-        function clickDetail(PONumber) {
-            window.location="printPO.php?nomor_po="+PONumber;
+        function loadDataPO(t1, t2, sp, st) {
+            // Gunakan parameter default jika tidak didefinisikan (untuk load awal)
+            var fDate = t1 || '<?= $ajax_start ?>';
+            var tDate = t2 || '<?= $ajax_end ?>';
+            var vNo = sp || '<?= $supplier ?>';
+            var vStatus = st || '<?= $status ?>';
+
+            $.ajax({
+                url: 'list_po.php',
+                type: 'GET',
+                data: {
+                    page: currentPage,
+                    vendorNo: vNo,
+                    fromDate: fDate,
+                    toDate: tDate,
+                    status: vStatus
+                },
+                success: function(response) {
+                    if (currentPage === 1) $('#bodyTablePO').empty();
+                    
+                    if (response.success && response.data.d.length > 0) {
+                        $.each(response.data.d, function(i, item) {
+                            var row = `<tr>
+                                <td align="center">${((currentPage - 1) * 100) + (i + 1)}</td>
+                                <td align="center">${item.transDate}</td>
+                                <td>${item.number}</td>
+                                <td>${item.vendor.name}</td>
+                                <td align="center">${item.status}</td>
+                                <td align="right">${parseFloat(item.totalAmount).toLocaleString('id-ID')}</td>
+                                <td align="center">
+                                    <span class="action-link" onclick="clickDetail('${item.number}')">Detail</span>
+                                    ${(item.status !== 'REJECTED' && item.status !== 'DRAFT') ? ` | <span class="action-link" onclick="clickSJ('${item.number}')">Surat Jalan</span>` : ''}
+                                </td>
+                            </tr>`;
+                            $('#bodyTablePO').append(row);
+                        });
+
+                        if (response.pagination && response.pagination.more) {
+                            $('#btnLoadMore').show();
+                        } else {
+                            $('#btnLoadMore').hide();
+                        }
+                    } else {
+                        if (currentPage === 1) $('#bodyTablePO').html('<tr><td colspan="7" align="center">Data tidak ditemukan</td></tr>');
+                        $('#btnLoadMore').hide();
+                    }
+                },
+                error: function() {
+                    $('#bodyTablePO').html('<tr><td colspan="7" align="center" style="color:red;">Terjadi kesalahan koneksi ke API</td></tr>');
+                }
+            });
         }
-        
-        function clickSJ(PONumber) {
-            var printWindow = window.open('newPrintSJ.php?nomor_po='+PONumber, 'printSJ', 'menubar=no,status=no,scrollbars=yes,width=900,height=600');
-            printWindow.onload = function() {
-                printWindow.focus();
-                printWindow.print();
-            };
+
+        function nextBatch() {
+            currentPage++;
+            var tgl1 = $('#txtTgl').val().replace(/-/g, '/');
+            var tgl2 = $('#txtTgl2').val().replace(/-/g, '/');
+            loadDataPO(tgl1, tgl2, $('#lstSupplier').val(), $('#lstStatus').val());
         }
 
         $(document).ready(function() {
-            var $select = $('#lstSupplier').select2({
+            // Load data saat pertama kali buka halaman
+            loadDataPO();
+
+            // Select2 Vendor
+            $('#lstSupplier').select2({
                 placeholder: "--- Pilih Supplier ---",
-                allowClear: true, 
+                allowClear: true,
                 width: '100%',
                 ajax: {
-                    url: '../Vendor/list.php', 
+                    url: '../Vendor/list.php',
                     dataType: 'json',
-                    delay: 300,
-                    data: function (params) {
-                        return { search: params.term, page: params.page || 1 };
-                    },
-                    processResults: function (response, params) {
-                        params.page = params.page || 1;
-                        var mapped = $.map(response.data, function (obj) {
-                            return { id: obj.vendorNo, text: obj.name };
-                        });
-                        return {
-                            results: mapped,
-                            pagination: { more: response.pagination.more }
+                    delay: 250,
+                    data: function (params) { return { search: params.term, page: params.page || 1 }; },
+                    processResults: function (data) {
+                        return { 
+                            results: $.map(data.data, function (obj) { return { id: obj.vendorNo, text: obj.name }; }),
+                            pagination: { more: (data.pagination && data.pagination.more) }
                         };
-                    },
-                    cache: true
-                }
-            });
-
-            // Handling tombol Reset (X) agar kembali ke ALL (%)
-            $select.on('change', function() {
-                if ($(this).val() === null || $(this).val() === "") {
-                    // Jika dikosongkan, kita set secara visual ke opsi All
-                    var newOption = new Option("All", "%", true, true);
-                    $('#lstSupplier').append(newOption).trigger('change.select2');
+                    }
                 }
             });
         });
+
+        function clickDetail(no) { window.location="printPO.php?nomor_po="+no; }
+        function clickSJ(no) { 
+            var win = window.open('newPrintSJ.php?nomor_po='+no, '_blank');
+            win.focus();
+        }
     </script>
+
     <style>
-        .myTable th { background-color:#2E5E79; color:#FFF; padding:10px; text-align:center; }
+        .myTable th { background-color:#2E5E79; color:#FFF; padding:10px; }
         .myTable td { padding:8px; border-bottom:1px solid #ddd; font-size:12px; }
-        .select2-container--default .select2-selection--single { height:32px !important; border-radius:0px !important; }
         .action-link { color: #2E5E79; cursor: pointer; text-decoration: underline; font-weight: bold; }
+        #btnLoadMore { margin: 20px; padding: 8px 20px; cursor: pointer; display:none; background: #2E5E79; color: white; border: none; border-radius: 4px; }
     </style>
 </head>
 <body>
     <div class="box round first fullpage" style="padding:20px;">
-        <h2>Daftar PO (Accurate System)</h2>
+        <h2>Daftar PO (Murni Paging Accurate)</h2>
         <div class="block">
             <table class="form">
                 <tr>
                     <td style="width:10%;">Status</td>
                     <td>
-                        <select id="lstStatus">
+                        <select id="lstStatus" style="width:250px;">
                             <option value="%" <?= ($status=="%")?'selected':'' ?>>ALL</option>
                             <option value="DRAFT" <?= ($status=="DRAFT")?'selected':'' ?>>DRAFT</option>
                             <option value="ONPROCESS" <?= ($status=="ONPROCESS")?'selected':'' ?>>ONPROCESS</option>
@@ -149,16 +168,12 @@ $poData = ($resPO['success'] && isset($resPO['data']['d'])) ? $resPO['data']['d'
                     <td>Supplier</td>
                     <td style="width:400px;">
                         <select id="lstSupplier">
-                            <? if($supplier == "%") { ?>
-                                <option value="%" selected>All</option>
-                            <? } else { ?>
-                                <option value="<?= $supplier ?>" selected><?= $supplier ?></option>
-                            <? } ?>
+                            <option value="<?= $supplier ?>" selected><?= ($supplier == "%") ? "All" : $supplier ?></option>
                         </select>
                     </td>
                 </tr>
                 <tr>
-                    <td>Tanggal</td>
+                    <td>Tanggal (d-m-y)</td>
                     <td>
                         <input id="txtTgl" type="text" size="15" value="<?= $date ?>" readonly>
                         <a onclick="callCalendarDMY('txtTgl');" style="cursor:pointer;"><img src="../lib Calendar/cal.gif"></a>
@@ -168,42 +183,23 @@ $poData = ($resPO['success'] && isset($resPO['data']['d'])) ? $resPO['data']['d'
                     </td>
                 </tr>
                 <tr>
-                    <td colspan="2"><input type="button" value="View" onclick="clickView();"></td>
+                    <td colspan="2"><input type="button" value="View" onclick="clickView();" style="padding: 5px 20px; cursor:pointer;"></td>
                 </tr>
             </table>
 
-            <div style="margin-top:20px; overflow:auto; max-height:500px;">
+            <div style="margin-top:20px; overflow:auto; max-height:600px;">
                 <table class="myTable" style="width:100%;">
                     <thead>
                         <tr>
-                            <th style="width:3%;">No.</th>
-                            <th style="width:10%;">Tanggal</th>
-                            <th style="width:15%;">No. PO</th>
-                            <th style="width:30%;">Vendor</th>
-                            <th style="width:10%;">Status</th>
-                            <th style="width:15%;">Total</th>
-                            <th style="width:17%;">Aksi</th>
+                            <th>No.</th><th>Tanggal</th><th>No. PO</th><th>Vendor</th><th>Status</th><th>Total</th><th>Aksi</th>
                         </tr>
                     </thead>
-                    <tbody>
-                    <? $no=0; foreach($poData as $poRow) { $no++; ?>
-                        <tr>
-                            <td align="center"><?= $no ?></td>
-                            <td align="center"><?= $poRow['transDate'] ?></td>
-                            <td><?= $poRow['number'] ?></td>
-                            <td><?= $poRow['vendor']['name'] ?></td>
-                            <td align="center"><?= $poRow['status'] ?></td>
-                            <td align="right"><?= number_format($poRow['totalAmount'], 2, ",", ".") ?></td>
-                            <td align="center">
-                                <span class="action-link" onclick="clickDetail('<?= $poRow['number'] ?>');">Detail</span>
-                                <? if($poRow['status'] != "REJECTED" && $poRow['status'] != "DRAFT") { ?>
-                                     | <span class="action-link" onclick="clickSJ('<?= $poRow['number'] ?>');">Surat Jalan</span>
-                                <? } ?>
-                            </td>
-                        </tr>
-                    <? } ?>
-                    </tbody>
+                    <tbody id="bodyTablePO">
+                        </tbody>
                 </table>
+                <div align="center">
+                    <button id="btnLoadMore" onclick="nextBatch();">Tampilkan 100 Data Berikutnya</button>
+                </div>
             </div>
         </div>
     </div>

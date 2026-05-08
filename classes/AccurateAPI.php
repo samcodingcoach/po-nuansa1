@@ -225,7 +225,7 @@ class AccurateAPI {
         // Default parameter dasar
         $defaultParams = array(
             'sp.page' => 1,
-            'sp.pageSize' => 2,
+            'sp.pageSize' => 100,
             'fields' => 'id,number,transDate,dueDate,totalAmount,status,statusName,vendor,vendor.name',
         );
         
