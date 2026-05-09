@@ -84,7 +84,7 @@ function bar128($text) {
         }
     </style>
 </head>
-<body>
+<body onload="window.print();">
     <table>
         <tr>
             <td rowspan="4" width="220"><img src="images/Nuansa.jpg" width="200" height="75" /></td>
