@@ -38,7 +38,7 @@ if(!isset($_REQUEST['tanggal2'])) {
 
     <script type="text/javascript">
         var currentPage = 1;
-        var pageSize = 100;
+        var pageSize = 100; // Samakan dengan pageSize di AccurateAPI.php/list_po.php
 
         function clickView() {
             currentPage = 1;
@@ -47,7 +47,6 @@ if(!isset($_REQUEST['tanggal2'])) {
         }
 
         function loadDataPO() {
-            // HTML5 date sudah YYYY-MM-DD, Accurate butuh DD/MM/YYYY
             var tgl1_raw = $('#txtTgl').val().split("-");
             var tgl2_raw = $('#txtTgl2').val().split("-");
             
@@ -100,6 +99,8 @@ if(!isset($_REQUEST['tanggal2'])) {
 
         $(document).ready(function() {
             loadDataPO();
+
+            // Inisialisasi Select2
             $('#lstSupplier').select2({
                 placeholder: "--- Pilih Supplier ---",
                 allowClear: true,
@@ -108,10 +109,18 @@ if(!isset($_REQUEST['tanggal2'])) {
                     url: '../Vendor/list.php',
                     dataType: 'json',
                     delay: 250,
-                    data: function (params) { return { search: params.term, page: params.page || 1 }; },
+                    data: function (params) { 
+                        return { 
+                            search: params.term, 
+                            page: params.page || 1 
+                        }; 
+                    },
                     processResults: function (data) {
                         return { 
-                            results: $.map(data.data, function (obj) { return { id: obj.vendorNo, text: obj.name }; }),
+                            results: $.map(data.data, function (obj) { 
+                                // FORMAT: vendorNo - name
+                                return { id: obj.vendorNo, text: obj.vendorNo + ' - ' + obj.name }; 
+                            }),
                             pagination: { more: data.pagination.more }
                         };
                     }
@@ -131,14 +140,7 @@ if(!isset($_REQUEST['tanggal2'])) {
         .myTable th { background-color:#2E5E79; color:#FFF; padding:10px; text-align:center; }
         .myTable td { padding:8px; border-bottom:1px solid #ddd; font-size:12px; }
         .action-link { color: #2E5E79; cursor: pointer; text-decoration: underline; font-weight: bold; }
-        
-        /* Styling HTML5 Date Input agar rapi */
-        input[type="date"] {
-            padding: 4px;
-            border: 1px solid #aaa;
-            font-family: inherit;
-        }
-        
+        input[type="date"] { padding: 4px; border: 1px solid #aaa; font-family: inherit; }
         .select2-container--default .select2-selection--single { border-radius: 0; height: 30px; border: 1px solid #aaa; }
         #btnLoadMore { margin: 20px; padding: 10px 25px; cursor: pointer; background: #2E5E79; color: white; border: none; display:none; }
     </style>
