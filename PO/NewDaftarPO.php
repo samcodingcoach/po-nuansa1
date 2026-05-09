@@ -38,33 +38,55 @@ if(!isset($_REQUEST['tanggal2'])) {
 
     <script type="text/javascript">
         var currentPage = 1;
-        var pageSize = 100; // Samakan dengan pageSize di AccurateAPI.php/list_po.php
+        var pageSize = 100; 
+        var isLocked = false; // Kunci untuk mencegah klik selama proses/cooldown
 
         function clickView() {
-            currentPage = 1;
-            $('#bodyTablePO').html('<tr><td colspan="7" align="center">Memuat data...</td></tr>');
-            loadDataPO();
+            if (isLocked) return;
+
+            var btn = $('#btnViewPO');
+            isLocked = true; // Kunci tombol
+            btn.attr('disabled', true).css('background', '#ccc');
+            
+            // TAHAP 1: Muncul Loading Statement & Tunggu 3 Detik
+            var waitTime = 3;
+            $('#bodyTablePO').html('<tr><td colspan="7" align="center">Menyiapkan antrean... Mohon tunggu ' + waitTime + ' detik.</td></tr>');
+            btn.val('Antre (' + waitTime + 's)...');
+
+            var waitInterval = setInterval(function() {
+                waitTime--;
+                if (waitTime > 0) {
+                    $('#bodyTablePO').html('<tr><td colspan="7" align="center">Menyiapkan antrean... Mohon tunggu ' + waitTime + ' detik.</td></tr>');
+                    btn.val('Antre (' + waitTime + 's)...');
+                } else {
+                    clearInterval(waitInterval);
+                }
+            }, 1000);
+
+            // Setelah 3 detik, baru lakukan request
+            setTimeout(function() {
+                currentPage = 1;
+                btn.val('Requesting...');
+                $('#bodyTablePO').html('<tr><td colspan="7" align="center">Sedang mengambil data dari Accurate...</td></tr>');
+                loadDataPO(btn);
+            }, 3000);
         }
 
-        function loadDataPO() {
+        function loadDataPO(btnElement) {
             var tgl1_raw = $('#txtTgl').val().split("-");
             var tgl2_raw = $('#txtTgl2').val().split("-");
-            
             var tgl1 = tgl1_raw[2] + '/' + tgl1_raw[1] + '/' + tgl1_raw[0];
             var tgl2 = tgl2_raw[2] + '/' + tgl2_raw[1] + '/' + tgl2_raw[0];
             
-            var supp = $('#lstSupplier').val();
-            var stat = $('#lstStatus').val();
-
             $.ajax({
                 url: 'list_po.php',
                 type: 'GET',
                 data: {
                     page: currentPage,
-                    vendorNo: supp,
+                    vendorNo: $('#lstSupplier').val(),
                     fromDate: tgl1,
                     toDate: tgl2,
-                    status: stat
+                    status: $('#lstStatus').val()
                 },
                 success: function(response) {
                     if (currentPage === 1) $('#bodyTablePO').empty();
@@ -91,15 +113,47 @@ if(!isset($_REQUEST['tanggal2'])) {
                         if (currentPage === 1) $('#bodyTablePO').html('<tr><td colspan="7" align="center">Data tidak ditemukan</td></tr>');
                         $('#btnLoadMore').hide();
                     }
+
+                    // TAHAP 2: Response diterima, mulai Cooldown 5 Detik
+                    if (currentPage === 1 && btnElement) {
+                        startCooldown(btnElement);
+                    } else {
+                        isLocked = false; // Jika load more, tidak perlu cooldown ketat
+                    }
+                },
+                error: function() {
+                    alert('Gagal mengambil data.');
+                    resetButton();
                 }
             });
         }
 
-        function nextBatch() { currentPage++; loadDataPO(); }
+        function startCooldown(btn) {
+            var cooldownTime = 5;
+            btn.val('Cooldown (' + cooldownTime + 's)...');
+
+            var cooldownInterval = setInterval(function() {
+                cooldownTime--;
+                if (cooldownTime > 0) {
+                    btn.val('Cooldown (' + cooldownTime + 's)...');
+                } else {
+                    clearInterval(cooldownInterval);
+                    resetButton();
+                }
+            }, 1000);
+        }
+
+        function resetButton() {
+            isLocked = false;
+            $('#btnViewPO').val('View Data PO').attr('disabled', false).css('background', '#2E5E79');
+        }
+
+        function nextBatch() { 
+            currentPage++; 
+            loadDataPO(null); 
+        }
 
         $(document).ready(function() {
-            loadDataPO();
-
             // Inisialisasi Select2
             $('#lstSupplier').select2({
                 placeholder: "--- Pilih Supplier ---",
@@ -109,16 +163,10 @@ if(!isset($_REQUEST['tanggal2'])) {
                     url: '../Vendor/list.php',
                     dataType: 'json',
                     delay: 250,
-                    data: function (params) { 
-                        return { 
-                            search: params.term, 
-                            page: params.page || 1 
-                        }; 
-                    },
+                    data: function (params) { return { search: params.term, page: params.page || 1 }; },
                     processResults: function (data) {
                         return { 
                             results: $.map(data.data, function (obj) { 
-                                // FORMAT: vendorNo - name
                                 return { id: obj.vendorNo, text: obj.vendorNo + ' - ' + obj.name }; 
                             }),
                             pagination: { more: data.pagination.more }
@@ -128,7 +176,7 @@ if(!isset($_REQUEST['tanggal2'])) {
             });
         });
 
-        function clickDetail(no) { window.open('newPrintPO.php?nomor_po='+no, '_blank');  }
+        function clickDetail(no) { window.open('newPrintPO.php?nomor_po='+no, '_blank'); }
         function clickSJ(no) { window.open('newPrintSJ.php?nomor_po='+no, '_blank'); }
     </script>
 
@@ -187,7 +235,7 @@ if(!isset($_REQUEST['tanggal2'])) {
                     <tr>
                         <td></td>
                         <td>
-                            <input type="button" value="View Data PO" onclick="clickView();" style="padding: 6px 25px; cursor: pointer; background: #2E5E79; color: white; border: none; font-weight: bold;">
+                            <input type="button" id="btnViewPO" value="View Data PO" onclick="clickView();" style="padding: 6px 25px; cursor: pointer; background: #2E5E79; color: white; border: none; font-weight: bold;">
                         </td>
                     </tr>
                 </table>
