@@ -28,7 +28,8 @@ Product/
 RTH/
 RTH1/
 SPB/
-StructureIndex/
+StructureIndex/*
+!StructureIndex/header-menu.php
 tes/
 utils/
 # Abaikan semua file di dalam folder tersebut
