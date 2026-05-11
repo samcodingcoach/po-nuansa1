@@ -50,14 +50,14 @@ if(!isset($_REQUEST['tanggal2'])) {
             
             // TAHAP 1: Muncul Loading Statement & Tunggu 3 Detik
             var waitTime = 3;
-            $('#bodyTablePO').html('<tr><td colspan="7" align="center">Menyiapkan antrean... Mohon tunggu ' + waitTime + ' detik.</td></tr>');
-            btn.val('Antre (' + waitTime + 's)...');
+            $('#bodyTablePO').html('<tr><td colspan="7" align="center">Mohon tunggu ' + waitTime + ' detik.</td></tr>');
+            btn.val('Processing (' + waitTime + 's)...');
 
             var waitInterval = setInterval(function() {
                 waitTime--;
                 if (waitTime > 0) {
-                    $('#bodyTablePO').html('<tr><td colspan="7" align="center">Menyiapkan antrean... Mohon tunggu ' + waitTime + ' detik.</td></tr>');
-                    btn.val('Antre (' + waitTime + 's)...');
+                    $('#bodyTablePO').html('<tr><td colspan="7" align="center">Mohon tunggu ' + waitTime + ' detik.</td></tr>');
+                    btn.val('Processing (' + waitTime + 's)...');
                 } else {
                     clearInterval(waitInterval);
                 }
@@ -67,7 +67,7 @@ if(!isset($_REQUEST['tanggal2'])) {
             setTimeout(function() {
                 currentPage = 1;
                 btn.val('Requesting...');
-                $('#bodyTablePO').html('<tr><td colspan="7" align="center">Sedang mengambil data dari Accurate...</td></tr>');
+                $('#bodyTablePO').html('<tr><td colspan="7" align="center">is retrieving data...</td></tr>');
                 loadDataPO(btn);
             }, 3000);
         }
@@ -130,12 +130,12 @@ if(!isset($_REQUEST['tanggal2'])) {
 
         function startCooldown(btn) {
             var cooldownTime = 5;
-            btn.val('Cooldown (' + cooldownTime + 's)...');
+            btn.val('Try Again(' + cooldownTime + 's)...');
 
             var cooldownInterval = setInterval(function() {
                 cooldownTime--;
                 if (cooldownTime > 0) {
-                    btn.val('Cooldown (' + cooldownTime + 's)...');
+                    btn.val('Try Again(' + cooldownTime + 's)...');
                 } else {
                     clearInterval(cooldownInterval);
                     resetButton();
@@ -235,7 +235,7 @@ if(!isset($_REQUEST['tanggal2'])) {
                     <tr>
                         <td></td>
                         <td>
-                            <input type="button" id="btnViewPO" value="View Data PO" onclick="clickView();" style="padding: 6px 25px; cursor: pointer; background: #2E5E79; color: white; border: none; font-weight: bold;">
+                            <input type="button" id="btnViewPO" value="View Data" onclick="clickView();" style="padding: 6px 25px; cursor: pointer; background: #2E5E79; color: white; border: none; font-weight: bold;">
                         </td>
                     </tr>
                 </table>
