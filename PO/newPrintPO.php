@@ -273,7 +273,11 @@ if ($nomor_po) {
     </div>
 
     <div align="center" class="no-print">
-        <button class="btn-print" onclick="window.print();">Cetak Purchase Order</button>
+        <?php if (!isset($dataPO['status']) || $dataPO['status'] !== 'CLOSED'): ?>
+            <button class="btn-print" onclick="window.print();">Cetak Purchase Order</button>
+        <?php endif; ?>
     </div>
+
+    
 </body>
 </html>
