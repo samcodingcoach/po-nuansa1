@@ -69,7 +69,15 @@ if ($nomor_po) {
     <table>
         <tr>
             <td rowspan="4" width="220"><img src="images/Nuansa.jpg" width="200" height="75" /></td>
-            <td rowspan="2" style="font-weight:bold; font-size:18px;">PURCHASE ORDER</td>
+            <td rowspan="2" style="font-weight:bold; font-size:18px;">
+                <?php 
+                if (isset($dataPO['status']) && $dataPO['status'] === 'CLOSED') {
+                    echo 'PURCHASE ORDER (CLOSED)';
+                } else {
+                    echo 'PURCHASE ORDER';
+                }
+                ?>
+            </td>
             <td width="100">Tanggal PO :</td>
             <td width="100">Tanggal Kirim :</td>
             <td width="100">Tanggal Exp :</td>
@@ -219,7 +227,23 @@ if ($nomor_po) {
     </table>
     
     <table style="margin-top:15px;">
-        <tr><td colspan="4">KET: <?php echo isset($dataPO['description']) ? $dataPO['description'] : '-'; ?></td></tr>
+        
+        <tr>
+            <td colspan="4">
+                KET: 
+                <?php 
+                $desc = (isset($dataPO['description']) && trim($dataPO['description']) !== '') ? trim($dataPO['description']) : '-';
+                $reason = (isset($dataPO['closeReason']) && trim($dataPO['closeReason']) !== '') ? trim($dataPO['closeReason']) : '';
+                
+                // Jika ada closeReason, gabungkan dengan deskripsi utama
+                if ($reason !== '') {
+                    echo $desc . ' - ' . $reason;
+                } else {
+                    echo $desc;
+                }
+                ?>
+            </td>
+        </tr>
         <tr style="text-align:center;">
             <td width="25%" style="padding-top:20px;">Mengetahui</td>
             <td width="25%">&nbsp;</td>
