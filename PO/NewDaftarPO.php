@@ -92,8 +92,32 @@ if(!isset($_REQUEST['tanggal2'])) {
                     if (currentPage === 1) $('#bodyTablePO').empty();
                     
                     if (response.success && response.data.d.length > 0) {
+                        var displayedCount = 0;
                         $.each(response.data.d, function(i, item) {
-                            var nomorUrut = ((currentPage - 1) * pageSize) + (i + 1);
+                            // PENTING: Jika status transaksi adalah DRAFT, lewati dan jangan render ke tabel
+                            if (item.status === 'DRAFT') {
+                                return true; 
+                            }
+
+                            displayedCount++;
+                            var nomorUrut = ((currentPage - 1) * pageSize) + displayedCount;
+                            
+                            // REVISI LOGIKA AKSI:
+                            var aksiHtml = '';
+
+                            if (item.status === 'CLOSED') {
+                                // REVISI: Jika CLOSED, memunculkan Detail dan Keterangan
+                                aksiHtml = `<span class="action-link" onclick="clickDetail('${item.number}')">Detail</span> | <span class="action-link ket-link" onclick="clickKet('${item.number}')">KETERANGAN</span>`;
+                            } else {
+                                // Jika BUKAN CLOSED (ONPROCESS, WAITING, FULLRECEIVED, dll), tampilkan Detail & Cetak SJ
+                                aksiHtml = `<span class="action-link" onclick="clickDetail('${item.number}')">Detail</span>`;
+                                
+                                // Cetak SJ ditambahkan jika status bukan REJECTED
+                                if (item.status !== 'REJECTED') {
+                                    aksiHtml += ` | <span class="action-link" onclick="clickSJ('${item.number}')">Cetak SJ</span>`;
+                                }
+                            }
+
                             var row = `<tr>
                                 <td align="center">${nomorUrut}</td>
                                 <td align="center">${item.transDate}</td>
@@ -101,13 +125,15 @@ if(!isset($_REQUEST['tanggal2'])) {
                                 <td>${item.vendor.name}</td>
                                 <td align="center">${item.status}</td>
                                 <td align="right">${parseFloat(item.totalAmount).toLocaleString('id-ID')}</td>
-                                <td align="center">
-                                    <span class="action-link" onclick="clickDetail('${item.number}')">Detail</span>
-                                    ${(item.status !== 'REJECTED' && item.status !== 'DRAFT') ? ` | <span class="action-link" onclick="clickSJ('${item.number}')">Cetak SJ</span>` : ''}
-                                </td>
+                                <td align="center">${aksiHtml}</td>
                             </tr>`;
                             $('#bodyTablePO').append(row);
                         });
+
+                        if (currentPage === 1 && displayedCount === 0) {
+                            $('#bodyTablePO').html('<tr><td colspan="7" align="center">Data tidak ditemukan (di luar DRAFT)</td></tr>');
+                        }
+
                         if (response.pagination && response.pagination.more) $('#btnLoadMore').show(); else $('#btnLoadMore').hide();
                     } else {
                         if (currentPage === 1) $('#bodyTablePO').html('<tr><td colspan="7" align="center">Data tidak ditemukan</td></tr>');
@@ -118,7 +144,7 @@ if(!isset($_REQUEST['tanggal2'])) {
                     if (currentPage === 1 && btnElement) {
                         startCooldown(btnElement);
                     } else {
-                        isLocked = false; // Jika load more, tidak perlu cooldown ketat
+                        isLocked = false; 
                     }
                 },
                 error: function() {
@@ -178,6 +204,29 @@ if(!isset($_REQUEST['tanggal2'])) {
 
         function clickDetail(no) { window.open('newPrintPO.php?nomor_po='+no, '_blank'); }
         function clickSJ(no) { window.open('newPrintSJ.php?nomor_po='+no, '_blank'); }
+        
+        // FUNGSI KETERANGAN: Membaca path berundak response.data.d.closeReason secara tepat
+        function clickKet(no) {
+            $.ajax({
+                url: 'detail_po.php',
+                type: 'GET',
+                data: { nomor_po: no },
+                dataType: 'json',
+                success: function(response) {
+                    if (response.success && response.data && response.data.d) {
+                        var rawReason = response.data.d.closeReason;
+                        var reason = (rawReason && rawReason.trim() !== "") ? rawReason : 'Tidak ada alasan penutupan khusus.';
+                        
+                        alert("Alasan Penutupan PO " + no + ":\n\n" + reason);
+                    } else {
+                        alert('Gagal memuat alasan penutupan atau struktur data tidak sesuai.');
+                    }
+                },
+                error: function() {
+                    alert('Terjadi kesalahan saat mengambil rincian data PO.');
+                }
+            });
+        }
     </script>
 
     <style>
@@ -188,6 +237,7 @@ if(!isset($_REQUEST['tanggal2'])) {
         .myTable th { background-color:#2E5E79; color:#FFF; padding:10px; text-align:center; }
         .myTable td { padding:8px; border-bottom:1px solid #ddd; font-size:12px; }
         .action-link { color: #2E5E79; cursor: pointer; text-decoration: underline; font-weight: bold; }
+        .ket-link { color: #e67e22; } /* Warna Oranye Khusus untuk tombol KETERANGAN agar terlihat beda */
         input[type="date"] { padding: 4px; border: 1px solid #aaa; font-family: inherit; }
         .select2-container--default .select2-selection--single { border-radius: 0; height: 30px; border: 1px solid #aaa; }
         #btnLoadMore { margin: 20px; padding: 10px 25px; cursor: pointer; background: #2E5E79; color: white; border: none; display:none; }
@@ -204,7 +254,6 @@ if(!isset($_REQUEST['tanggal2'])) {
                         <td>
                             <select id="lstStatus" style="width: 250px;">
                                 <option value="%" <?= ($status=="%")?'selected':'' ?>>ALL</option>
-                                <option value="DRAFT" <?= ($status=="DRAFT")?'selected':'' ?>>DRAFT</option>
                                 <option value="ONPROCESS" <?= ($status=="ONPROCESS")?'selected':'' ?>>ONPROCESS</option>
                                 <option value="WAITING" <?= ($status=="WAITING")?'selected':'' ?>>WAITING</option>
                                 <option value="FULLRECEIVED" <?= ($status=="FULLRECEIVED")?'selected':'' ?>>FULLRECEIVED</option>
@@ -235,7 +284,7 @@ if(!isset($_REQUEST['tanggal2'])) {
                     <tr>
                         <td></td>
                         <td>
-                            <input type="button" id="btnViewPO" value="View Data" onclick="clickView();" style="padding: 6px 25px; cursor: pointer; background: #2E5E79; color: white; border: none; font-weight: bold;">
+                            <input type="button" id="btnViewPO" value="View Data PO" onclick="clickView();" style="padding: 6px 25px; cursor: pointer; background: #2E5E79; color: white; border: none; font-weight: bold;">
                         </td>
                     </tr>
                 </table>
